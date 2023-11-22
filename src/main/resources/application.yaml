@@ -1,0 +1,4 @@
+spring:
+  batch:
+    job:
+      enabled: false # Prevent jobs to be executed at startup
