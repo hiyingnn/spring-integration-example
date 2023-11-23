@@ -2,3 +2,11 @@ spring:
   batch:
     job:
       enabled: false # Prevent jobs to be executed at startup
+  sql:
+    init:
+      schema-locations: classpath:/org/springframework/batch/core/schema-oracle.sql
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521:XE
+    username: hiying
+    password: hiying
+    driver-class-name: oracle.jdbc.driver.OracleDriver

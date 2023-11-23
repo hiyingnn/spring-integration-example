@@ -1,5 +1,6 @@
 package com.example.springintegration.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
@@ -10,13 +11,15 @@ import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.file.dsl.Files;
+import org.springframework.integration.file.filters.AcceptOnceFileListFilter;
+import org.springframework.integration.file.filters.CompositeFileListFilter;
 import org.springframework.integration.file.filters.SimplePatternFileListFilter;
-import org.springframework.integration.handler.LoggingHandler;
 
 import java.io.File;
 
 
 @Configuration
+@Slf4j
 public class IntegrationConfig {
 
     @Bean
@@ -35,12 +38,18 @@ public class IntegrationConfig {
 
     @Bean
     public IntegrationFlow integrationFlow(JobLaunchingGateway jobLaunchingGateway, FileMessageToJobRequest fileMessageToJobRequest) {
-        return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"))
-                                        .filter(new SimplePatternFileListFilter("*.csv")),
+       CompositeFileListFilter<File> compositeFileListFilter = new CompositeFileListFilter<>();
+       compositeFileListFilter.addFilter(new SimplePatternFileListFilter("*.csv"));
+       compositeFileListFilter.addFilter(new AcceptOnceFileListFilter<>());
+
+      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"))
+                                        .filter(compositeFileListFilter),
                         c -> c.poller(Pollers.fixedRate(1000).maxMessagesPerPoll(1)))
                 .transform(fileMessageToJobRequest)
                 .handle(jobLaunchingGateway)
-                .log(LoggingHandler.Level.WARN, "headers.id + ': ' + payload")
+                .handle(jobExecution -> {
+                  log.info(jobExecution.getPayload().toString());
+                }) //
                 .get();
     }
 }
