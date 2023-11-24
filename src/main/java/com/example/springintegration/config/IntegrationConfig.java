@@ -11,11 +11,13 @@ import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.file.dsl.Files;
-import org.springframework.integration.file.filters.AcceptOnceFileListFilter;
 import org.springframework.integration.file.filters.CompositeFileListFilter;
 import org.springframework.integration.file.filters.SimplePatternFileListFilter;
+import org.springframework.integration.jdbc.metadata.JdbcMetadataStore;
 
+import javax.sql.DataSource;
 import java.io.File;
+import java.util.Comparator;
 
 
 @Configuration
@@ -37,14 +39,22 @@ public class IntegrationConfig {
     }
 
     @Bean
-    public IntegrationFlow integrationFlow(JobLaunchingGateway jobLaunchingGateway, FileMessageToJobRequest fileMessageToJobRequest) {
+    public JdbcMetadataStore jdbcMetadataStore(DataSource dataSource) {
+      return new JdbcMetadataStore(dataSource);
+    }
+
+    @Bean
+    public IntegrationFlow integrationFlow(JobLaunchingGateway jobLaunchingGateway,
+                                           FileMessageToJobRequest fileMessageToJobRequest,
+                                           BatchJobMetadataService batchJobMetadataService) {
        CompositeFileListFilter<File> compositeFileListFilter = new CompositeFileListFilter<>();
        compositeFileListFilter.addFilter(new SimplePatternFileListFilter("*.csv"));
-       compositeFileListFilter.addFilter(new AcceptOnceFileListFilter<>());
+       compositeFileListFilter.addFilter(new EarliestJobIncompleteFileListFilter(batchJobMetadataService) );
 
-      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"))
-                                        .filter(compositeFileListFilter),
-                        c -> c.poller(Pollers.fixedRate(1000).maxMessagesPerPoll(1)))
+      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"),
+                                      Comparator.comparing(File::getUsableSpace))
+            .filter(compositeFileListFilter),
+                        c -> c.poller(Pollers.cron("0 * * ? * *").maxMessagesPerPoll(1)))
                 .transform(fileMessageToJobRequest)
                 .handle(jobLaunchingGateway)
                 .handle(jobExecution -> {

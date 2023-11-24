@@ -1,32 +1,85 @@
-# Autoinferring 
-Automapping FieldSets to Domain Objects
-For many, having to write a specific FieldSetMapper is equally as cumbersome as writing a specific RowMapper for a JdbcTemplate. Spring Batch makes this easier by providing a FieldSetMapper that automatically maps fields by matching a field name with a setter on the object using the JavaBean specification.
+# Requirements
+1. Polling file:
+   - In order
+   - Only those which have (1) failed processing, (2) yet to have processed
+2. Batch processing:
+   - Process and store changes in database:
+     - Update: Update time and detaails
+     - Create: Create record
+     - Delete: Update flag
 
-Again using the football example, the BeanWrapperFieldSetMapper configuration looks like the following snippet in Java:
+# Polling file
 
-Java Configuration
-``` java
-@Bean
-public FieldSetMapper fieldSetMapper() {
-BeanWrapperFieldSetMapper fieldSetMapper = new BeanWrapperFieldSetMapper();
+## Filters
+### `FileSystemPersistentAcceptOnceFileListFilter`:
 
-	fieldSetMapper.setPrototypeBeanName("player");
+#### Explanation
+- Ensures that on a app restart, we have stored metadata of which files have been polled before.
+- Unless the file was last updated since then, it will not be polled
+- However, there will be the scenario where:
+  - processed files are polled again, regardless of `JobStatus`, as long as it was last updated
 
-	return fieldSetMapper;
-}
-
+#### Implementation Details
+- Need to import dependency:
+```xml
+<dependency>
+  <groupId>org.springframework.integration</groupId>
+  <artifactId>spring-integration-jdbc</artifactId>
+</dependency>
 ```
-
+- Create `JdbcMetadataStore` Bean which will store and fetch metadata of files (date, last modified date), which will be used in the `FileSystemPersistentAcceptOnceFileListFilter`
 ```java
 @Bean
-@Scope("prototype")
-public Player player() {
-    return new Player();
+public JdbcMetadataStore jdbcMetadataStore(DataSource dataSource) {
+  return new JdbcMetadataStore(dataSource);
 }
 ```
 
+### `JobSuccessfulFileListFilter`:
+- A custom filter condition which can filter out those files which have already been processed.
+- However, this does not ensure that the processing is done in order
 
-```txt
-2023-11-22T18:35:55.271+08:00 ERROR 11572 --- [   scheduling-1] o.s.integration.handler.LoggingHandler   : org.springframework.messaging.MessageHandlingException: error occurred in message handler [bean 'integrationFlow.bridge#0' for component 'integrationFlow.org.springframework.integration.config.ConsumerEndpointFactoryBean#2'; defined in: 'class path resource [com/example/springintegration/config/IntegrationConfig.class]'; from source: 'bean method integrationFlow'], failedMessage=GenericMessage [payload=JobExecution: id=82, version=2, startTime=2023-11-22T18:35:55.262749800, endTime=2023-11-22T18:35:55.271750300, lastUpdated=2023-11-22T18:35:55.271750300, status=FAILED, exitStatus=exitCode=FAILED;exitDescription=org.springframework.batch.item.ReaderNotOpenException: Reader must be open before it can be read.
+#### Implementation Details
+- A concrete implementation of `AbstractFileListFilter` which will call the `BatchMetadataService`, queries the `JobRepository`
+- A file that passes this filter would be one without a BatchStatus.equals(completed):
+  - Failed processing
+  - Never been processed before
+
+### `Order`:
+- We would need to process it in order. Following the javadocs:
+```java
+public static FileInboundChannelAdapterSpec inboundAdapter(File directory,
+ @Nullable
+ Comparator<File> receptionOrderComparator){}
 ```
-https://stackoverflow.com/questions/23847661/spring-batch-org-springframework-batch-item-readernotopenexception-reader-must
+  - receptionOrderComparator - the Comparator for ordering file objects.
+- However, this approach might not always guarantee the files to be processed in the order of their names. The reason lies in the asynchronous nature of message processing in Spring Integration. When the inboundAdapter detects a new file, it creates an IntegrationMessage containing the file and sends it to the downstream components. The processing of these messages is asynchronous, meaning they might not be handled in the same order they were received.
+- As such, I have done the sorting in the `JobSuccessfulFileListFilter` as described above
+### Advanced
+- File transferring halfway?
+  - Rename strategy?
+  - Use LastModified filters?
+---
+
+## Testing
+The following is the testing strategy that would like to employ:
+
+### e2e test
+1. Positive flow:
+   - 2 files
+   - assert output of the final outcome
+   - Need to ensure that spring batch job metatables are fresh
+2. Negative flow:
+   - 1 file positive (?), 1 file negative
+
+### Unit testing
+#### Spring Integration Flow: File -> Job Gateway:
+1. 2 files:
+   - Both new (not processed)
+2. 2 files:
+   - One not new, 1 new (not processed)
+3. 2 files:
+   - Both failed
+
+#### Spring batch
+1. Processing (?)
