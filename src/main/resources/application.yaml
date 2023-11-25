@@ -15,3 +15,7 @@ mybatis:
     auto-mapping-unknown-column-behavior: warning
     map-underscore-to-camel-case: true
   mapper-locations: mybatis-mappers/*Mapper.xml
+
+integration:
+  cron: 0 * * ? * * # every minute
+  file-destination: src/filedump

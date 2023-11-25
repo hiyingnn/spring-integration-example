@@ -1,10 +1,12 @@
 package com.example.springintegration.config;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.integration.launch.JobLaunchingGateway;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SyncTaskExecutor;
@@ -18,8 +20,12 @@ import java.io.File;
 
 
 @Configuration
+@ConfigurationPropertiesScan
 @Slf4j
+@RequiredArgsConstructor
 public class IntegrationConfig {
+
+  private final IntegrationBatchProperties integrationBatchProperties;
 
     @Bean
     public FileMessageToJobRequest fileMessageToJobRequest(Job readLogJob) {
@@ -43,9 +49,9 @@ public class IntegrationConfig {
        compositeFileListFilter.addFilter(new SimplePatternFileListFilter("*.csv"));
        compositeFileListFilter.addFilter(new EarliestJobIncompleteFileListFilter(batchJobMetadataService) );
 
-      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"))
+      return IntegrationFlow.from(Files.inboundAdapter(new File(integrationBatchProperties.fileDestination()))
             .filter(compositeFileListFilter),
-                        c -> c.poller(Pollers.cron("0 * * ? * *").maxMessagesPerPoll(1)))
+                        c -> c.poller(Pollers.cron(integrationBatchProperties.cron()).maxMessagesPerPoll(1)))
                 .transform(fileMessageToJobRequest)
                 .handle(jobLaunchingGateway)
                 .handle(jobExecution -> {
