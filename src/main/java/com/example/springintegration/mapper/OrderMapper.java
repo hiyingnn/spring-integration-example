@@ -8,7 +8,7 @@ public class OrderMapper implements FieldSetMapper<Order> {
     public Order mapFieldSet(FieldSet fs) {
 
        return Order.builder()
-               .referenceCode(fs.readString("referenceCode"))
+               .referenceId(fs.readString("referenceId"))
                .name(fs.readString("name"))
                .firstUpdated(fs.readDate("firstUpdated"))
                .lastUpdated(fs.readDate("lastUpdated"))

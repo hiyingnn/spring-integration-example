@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.springintegration.mapper.OrderRecordMapper">
+
+  <select id="selectOrderRecordByReferenceId" resultType="com.example.springintegration.model.OrderRecord">
+    SELECT *
+    FROM ORDER_RECORD
+    WHERE REFERENCE_ID = #{referenceId}
+  </select>
+
+  <insert id="insertOrderRecord">
+    INSERT INTO ORDER_RECORD (REFERENCE_ID, FIRST_UPDATED, LAST_UPDATED, NAME, IS_DELETED)
+    VALUES (#{referenceId}, #{firstUpdated}, #{lastUpdated}, #{name}, #{isDeleted})
+  </insert>
+
+  <update id="updateOrderRecord">
+    UPDATE ORDER_RECORD
+    SET
+      FIRST_UPDATED = #{firstUpdated},
+      LAST_UPDATED = #{lastUpdated},
+      NAME = #{name},
+      IS_DELETED = #{isDeleted}
+    WHERE REFERENCE_ID = #{referenceId}
+  </update>
+</mapper>

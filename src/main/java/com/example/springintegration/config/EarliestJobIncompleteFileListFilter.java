@@ -1,6 +1,7 @@
 package com.example.springintegration.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.integration.file.filters.FileListFilter;
 
 import java.io.File;
@@ -9,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @RequiredArgsConstructor
+@Slf4j
 public class EarliestJobIncompleteFileListFilter implements FileListFilter<File> {
   private final BatchJobMetadataService batchJobMetadataService;
 
@@ -19,7 +21,7 @@ public class EarliestJobIncompleteFileListFilter implements FileListFilter<File>
       return List.of();
     }
 
-    List<File> orderedFiles = Arrays.stream(files).sorted(Comparator.comparing(File::getName)).toList();
+    List<File> orderedFiles = Arrays.stream(files).sorted(Comparator.comparing(File::getAbsolutePath)).toList();
     for (File file: orderedFiles) {
       if (this.accept(file)) {
         // Only return the first file that is unsuccessful!
@@ -31,7 +33,7 @@ public class EarliestJobIncompleteFileListFilter implements FileListFilter<File>
 
   @Override
   public boolean accept(File file) {
-    boolean isSuccessful = batchJobMetadataService.isJobExecutionSuccessful(file.getName());
+    boolean isSuccessful = batchJobMetadataService.isJobExecutionSuccessful(file.getAbsolutePath());
     return !isSuccessful;
   }
 

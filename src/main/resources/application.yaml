@@ -9,3 +9,9 @@ spring:
     username: hiying
     password: hiying
     driver-class-name: oracle.jdbc.driver.OracleDriver
+mybatis:
+  configuration:
+    cache-enabled: false
+    auto-mapping-unknown-column-behavior: warning
+    map-underscore-to-camel-case: true
+  mapper-locations: mybatis-mappers/*Mapper.xml

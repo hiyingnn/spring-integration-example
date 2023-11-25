@@ -13,11 +13,8 @@ import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.file.dsl.Files;
 import org.springframework.integration.file.filters.CompositeFileListFilter;
 import org.springframework.integration.file.filters.SimplePatternFileListFilter;
-import org.springframework.integration.jdbc.metadata.JdbcMetadataStore;
 
-import javax.sql.DataSource;
 import java.io.File;
-import java.util.Comparator;
 
 
 @Configuration
@@ -39,11 +36,6 @@ public class IntegrationConfig {
     }
 
     @Bean
-    public JdbcMetadataStore jdbcMetadataStore(DataSource dataSource) {
-      return new JdbcMetadataStore(dataSource);
-    }
-
-    @Bean
     public IntegrationFlow integrationFlow(JobLaunchingGateway jobLaunchingGateway,
                                            FileMessageToJobRequest fileMessageToJobRequest,
                                            BatchJobMetadataService batchJobMetadataService) {
@@ -51,8 +43,7 @@ public class IntegrationConfig {
        compositeFileListFilter.addFilter(new SimplePatternFileListFilter("*.csv"));
        compositeFileListFilter.addFilter(new EarliestJobIncompleteFileListFilter(batchJobMetadataService) );
 
-      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"),
-                                      Comparator.comparing(File::getUsableSpace))
+      return IntegrationFlow.from(Files.inboundAdapter(new File("src/filedump"))
             .filter(compositeFileListFilter),
                         c -> c.poller(Pollers.cron("0 * * ? * *").maxMessagesPerPoll(1)))
                 .transform(fileMessageToJobRequest)

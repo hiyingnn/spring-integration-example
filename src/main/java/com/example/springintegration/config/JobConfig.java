@@ -2,6 +2,7 @@ package com.example.springintegration.config;
 
 import com.example.springintegration.mapper.OrderMapper;
 import com.example.springintegration.model.Order;
+import com.example.springintegration.model.OrderRecord;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -32,16 +33,15 @@ public class JobConfig {
     }
 
     @Bean
-    public Step readLogOrderStep(JobRepository jobRepository, PlatformTransactionManager transactionManager, ItemReader<Order> orderItemReader) {
+    public Step readLogOrderStep(JobRepository jobRepository,
+                                 PlatformTransactionManager transactionManager,
+                                 ItemReader<Order> orderItemReader,
+                                 ItemProcessor<Order, OrderRecord> orderOrderRecordItemProcessor) {
         return new StepBuilder("readLogOrderStep", jobRepository)
                 .allowStartIfComplete(true)
-                .<Order, Order>chunk(1000, transactionManager)
+                .<Order, OrderRecord>chunk(1000, transactionManager)
                 .reader(orderItemReader)
-                .processor((ItemProcessor<Order, Order>) order -> {
-                    // log out the order
-                    log.info(order.toString());
-                    return order;
-                })
+                .processor(orderOrderRecordItemProcessor)
                 .writer(chunk -> {
                     // do nothing
                 }).build();
@@ -49,7 +49,7 @@ public class JobConfig {
 
     @Bean
     @StepScope
-    public FlatFileItemReader sampleReader(@Value("#{jobParameters['input.file.name']}") String resource) {
+    public FlatFileItemReader<Order> sampleReader(@Value("#{jobParameters['input.file.name']}") String resource) {
 
         FlatFileItemReader<Order> flatFileItemReader = new FlatFileItemReader<>();
         flatFileItemReader.setResource(new FileSystemResource(resource));
@@ -58,7 +58,7 @@ public class JobConfig {
         DefaultLineMapper<Order> orderLineMapper = new DefaultLineMapper<>();
         orderLineMapper.setFieldSetMapper(new OrderMapper());
         DelimitedLineTokenizer tokenizerDet = new DelimitedLineTokenizer(",");
-        tokenizerDet.setNames("referenceCode", "name", "firstUpdated", "lastUpdated");
+        tokenizerDet.setNames("referenceId", "name", "firstUpdated", "lastUpdated");
         orderLineMapper.setLineTokenizer(tokenizerDet);
 
         flatFileItemReader.setLineMapper(orderLineMapper);

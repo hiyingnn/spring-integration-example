@@ -72,6 +72,8 @@ The following is the testing strategy that would like to employ:
 2. Negative flow:
    - 1 file positive (?), 1 file negative
 
+Resources: https://www.baeldung.com/spring-batch-testing-job
+
 ### Unit testing
 #### Spring Integration Flow: File -> Job Gateway:
 1. 2 files:
