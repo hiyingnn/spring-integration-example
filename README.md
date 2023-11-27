@@ -73,7 +73,9 @@ The following is the testing strategy that would like to employ:
    - 1 file positive (?), 1 file negative
 
 Resources: https://www.baeldung.com/spring-batch-testing-job
-
+Some thoughts:
+  - In memory database? - H2
+  - To mock the database layer, and to test how it was invoked?
 ### Unit testing
 #### Spring Integration Flow: File -> Job Gateway:
 1. 2 files:
