@@ -8,6 +8,12 @@
     WHERE REFERENCE_ID = #{referenceId}
   </select>
 
+
+  <select id="selectOrderRecords" resultType="com.example.springintegration.model.OrderRecord">
+    SELECT *
+    FROM ORDER_RECORD
+  </select>
+
   <insert id="insertOrderRecord">
     INSERT INTO ORDER_RECORD (REFERENCE_ID, FIRST_UPDATED, LAST_UPDATED, NAME, IS_DELETED)
     VALUES (#{referenceId}, #{firstUpdated}, #{lastUpdated}, #{name}, #{isDeleted})

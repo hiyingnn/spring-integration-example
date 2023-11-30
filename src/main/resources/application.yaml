@@ -3,11 +3,11 @@ spring:
     job:
       enabled: false # Prevent jobs to be executed at startup
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
   datasource:
     url: jdbc:oracle:thin:@localhost:1521:XE
-    username: hiying
-    password: hiying
+    username: ORDERS
+    password: ORDERS
     driver-class-name: oracle.jdbc.driver.OracleDriver
 mybatis:
   configuration:
